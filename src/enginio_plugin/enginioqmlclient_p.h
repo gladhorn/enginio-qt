@@ -45,9 +45,8 @@
 
 class EnginioQmlClientPrivate : public EnginioClientPrivate
 {
-    QJSEngine *_engine;
-    QJSValue _stringify;
-    QJSValue _parse;
+    Q_OBJECT
+
 public:
     EnginioQmlClientPrivate(EnginioClient *client)
         : EnginioClientPrivate(client)
@@ -64,6 +63,11 @@ public:
     QJSValue fromJson(const QByteArray &value);
 private:
     void _setEngine(QJSEngine *engine);
+    QJSEngine *_engine;
+    QJSValue _stringify;
+    QJSValue _parse;
+
+    friend class EnginioQmlReplyPrivate;
 };
 
 #endif // ENGINIOQMLCLIENT_P_H
