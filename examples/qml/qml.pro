@@ -1,6 +1,7 @@
 TEMPLATE = subdirs
 
 SUBDIRS += \
+    files \
     image-gallery \
     loganalyzer \
     logviewer \
