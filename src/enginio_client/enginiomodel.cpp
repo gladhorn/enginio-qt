@@ -147,6 +147,9 @@ public:
         if (_enginio) {
             _connections.append(QObject::connect(_enginio, &EnginioClient::finished, FinishedRequest(this)));
             _connections.append(QObject::connect(_enginio, &QObject::destroyed, EnginioDestroyed(this)));
+
+            QObject::connect(_enginio, &EnginioClient::backendIdChanged, QueryChanged(this));
+            QObject::connect(_enginio, &EnginioClient::backendSecretChanged, QueryChanged(this));
             if (!_enginio->backendId().isEmpty() && !_enginio->backendSecret().isEmpty())
                 execute();
         }
