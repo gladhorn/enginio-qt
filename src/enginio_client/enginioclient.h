@@ -130,6 +130,7 @@ protected:
     Q_DECLARE_PRIVATE(EnginioClient)
 private:
     Q_DISABLE_COPY(EnginioClient)
+    Q_PRIVATE_SLOT(d_func(), void uploadProgress(qint64,qint64))
 };
 
 Q_DECLARE_TYPEINFO(EnginioClient::Operation, Q_PRIMITIVE_TYPE);

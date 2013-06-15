@@ -19,8 +19,7 @@ ApplicationWindow {
         id: client
         backendId: AppConfig.backendData.id
         backendSecret: AppConfig.backendData.secret
-        apiUrl: AppConfig.backendData.apiUrl
-        onError: console.log("Enginio error " + reply.errorCode + ": " + reply.errorString)
+        onError: console.log("Enginio finished " + reply.errorCode + ": " + reply.errorString)
         onFinished: console.log(JSON.stringify(reply))
     }
 
@@ -45,15 +44,55 @@ ApplicationWindow {
             }
             TableViewColumn {
                 title: "Size"
-                role: "size"
+                delegate: sizeDelegate
+            }
+            TableViewColumn {
+                title: "Status"
             }
             Layout.fillWidth: true
             Layout.fillHeight: true
         }
 
-        Button {
-            text: "Upload file"
-            onClicked: fileDialog.visible = true
+        RowLayout {
+            Button {
+                text: "Upload file"
+                onClicked: fileDialog.visible = true
+            }
+            ProgressBar {
+                id: uploadProgress
+                maximumValue: 1.0
+                visible: false
+                Layout.fillWidth: true
+                Text {
+                    id: progressText
+                    anchors.centerIn: parent
+                }
+            }
+        }
+    }
+
+    function sizeString(size) {
+        if (size > 1024 * 1024)
+            return (size / 1024 / 1024).toFixed(1).toString() + " MiB"
+        if (size > 1024)
+            return (size / 1024).toFixed(1).toString() + " KiB"
+        return size.toString() + " B"
+    }
+
+    Component {
+        id: sizeDelegate
+        Text {
+            id: label
+            text: sizeString(model.rowData(styleData.row)["file"]["fileSize"])
+            width: parent.width
+            anchors.leftMargin: 8
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            horizontalAlignment: Qt.AlignRight
+            font: styleitem.font
+            color: styleData.textColor
+            renderType: Text.NativeRendering
         }
     }
 
@@ -83,7 +122,16 @@ ApplicationWindow {
                 };
                 console.log("data: " + reply.data + " id: " + reply.data.id)
                 var uploadReply = client.uploadFile(uploadData, fileUrl)
-                uploadReply.finished.connect(function() { var tmp = enginioModel.query; enginioModel.query = {}; enginioModel.query = tmp; })
+                uploadReply.finished.connect(function() {
+                    var tmp = enginioModel.query; enginioModel.query = {}; enginioModel.query = tmp;
+                    uploadProgress.visible = false
+                })
+                uploadReply.uploadProgress.connect(function(progress, total) {
+                    console.log("Uploading: " + progress + " of " + total)
+                    uploadProgress.value = progress / total
+                    uploadProgress.visible = true
+                    progressText.text = "Uploaded " + sizeString(progress) + " of " + sizeString(total)
+                })
             })
             console.log("File selected: " + fileUrl);
         }

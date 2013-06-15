@@ -39,7 +39,7 @@
 #define ENGINIOCLIENT_P_H
 
 #include "chunkdevice_p.h"
-#include "enginioclient.h"
+//#include "enginioclient.h"
 #include "enginioreply.h"
 #include "enginiofakereply_p.h"
 #include "enginioidentity.h"
@@ -716,7 +716,23 @@ public:
         return q_ptr->isSignalConnected(signal);
     }
 
+    void uploadProgress(qint64 progress, qint64 total)
+    {
+        QNetworkReply *reply = qobject_cast<QNetworkReply*>(q_ptr->sender());
+        Q_ASSERT(reply);
+        if (_chunkedUploads.contains(reply)) {
+            EnginioReply *ereply = _replyReplyMap.value(reply);
+            QPair<QIODevice*, qint64> chunkData = _chunkedUploads.value(reply);
+            emit ereply->uploadProgress(chunkData.second + progress, chunkData.first->size());
+        } else {
+            EnginioReply *ereply = _replyReplyMap.value(reply);
+            emit ereply->uploadProgress(progress, total);
+        }
+    }
+
 private:
+
+#include <QNetworkReply>
 
     template<class T>
     QNetworkReply *uploadAsHttpMultiPart(const ObjectAdaptor<T> &object, QIODevice *device, const QString &mimeType)
@@ -732,6 +748,7 @@ private:
         QNetworkReply *reply = networkManager()->post(req, multiPart);
         multiPart->setParent(reply);
         device->setParent(multiPart);
+        QObject::connect(reply, SIGNAL(uploadProgress(qint64,qint64)), q_ptr, SLOT(uploadProgress(qint64,qint64)));
         return reply;
     }
 
@@ -775,6 +792,7 @@ private:
 
         QNetworkReply *reply = networkManager()->post(req, object.toJson());
         _chunkedUploads.insert(reply, qMakePair(device, static_cast<qint64>(0)));
+        QObject::connect(reply, SIGNAL(uploadProgress(qint64,qint64)), q_ptr, SLOT(uploadProgress(qint64,qint64)));
         return reply;
     }
 
@@ -814,6 +832,7 @@ private:
         _chunkedUploads.insert(reply, qMakePair(device, endPos));
         ereply->setNetworkReply(reply);
         reply->setParent(ereply);
+        QObject::connect(reply, SIGNAL(uploadProgress(qint64,qint64)), q_ptr, SLOT(uploadProgress(qint64,qint64)));
     }
 };
 

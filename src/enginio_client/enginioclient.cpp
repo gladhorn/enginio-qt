@@ -35,6 +35,7 @@
 **
 ****************************************************************************/
 
+#include "enginioclient.h"
 #include "enginioclient_p.h"
 #include "enginioreply.h"
 #include "enginiomodel.h"
@@ -488,3 +489,5 @@ EnginioClient::AuthenticationState EnginioClient::authenticationState() const
     Q_D(const EnginioClient);
     return d->authenticationState();
 }
+
+#include "moc_enginioclient.cpp"
