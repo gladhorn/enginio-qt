@@ -43,14 +43,25 @@ ApplicationWindow {
                 role: "name"
             }
             TableViewColumn {
+                title: "Type"
+                delegate: typeDelegate
+            }
+            TableViewColumn {
                 title: "Size"
                 delegate: sizeDelegate
             }
             TableViewColumn {
                 title: "Status"
+                delegate: statusDelegate
             }
             Layout.fillWidth: true
             Layout.fillHeight: true
+
+            onClicked: console.log("Clicked")
+            onActivated: {
+                console.log("Activated: " + row + JSON.stringify(model.rowData(row)["file"]))
+                downloadFile(model.rowData(row)["file"]["id"], model.rowData(row)["file"]["fileName"])
+            }
         }
 
         RowLayout {
@@ -85,7 +96,7 @@ ApplicationWindow {
             id: label
             text: sizeString(model.rowData(styleData.row)["file"]["fileSize"])
             width: parent.width
-            anchors.leftMargin: 8
+            anchors.margins: 8
             anchors.left: parent.left
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
@@ -94,6 +105,54 @@ ApplicationWindow {
             color: styleData.textColor
             renderType: Text.NativeRendering
         }
+    }
+    Component {
+        id: typeDelegate
+        Text {
+            id: label
+            text: sizeString(model.rowData(styleData.row)["file"]["contentType"])
+            width: parent.width
+            anchors.margins: 8
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            horizontalAlignment: Qt.AlignLeft
+            font: styleitem.font
+            color: styleData.textColor
+            renderType: Text.NativeRendering
+        }
+    }
+    Component {
+        id: statusDelegate
+        Text {
+            text: (model.rowData(styleData.row)["file"] !== undefined
+                && model.rowData(styleData.row)["file"]["fileSize"] !== undefined) ?
+                      "Complete" : "Incomplete"
+            anchors.left: parent.left
+            anchors.margins: 8
+            anchors.verticalCenter: parent.verticalCenter
+        }
+    }
+
+    FileDialog {
+        id: saveDialog
+        property string fileId
+        property string fileName
+        onSelectionAccepted: {
+            var downReply = client.downloadFile({"id":fileId})
+            downReply.finished.connect(function() {
+                console.log("Download: " + JSON.stringify(downReply.data) + " to " + fileUrl)
+            })
+        }
+    }
+
+    function downloadFile(fileId, fileName) {
+        console.log("Download " + fileId + " as " + fileName)
+        saveDialog.title = "Download " + fileName
+        saveDialog.fileId = fileId
+        saveDialog.fileName = fileName
+        saveDialog.setSelectFolder(true)
+        saveDialog.visible = true
     }
 
     // File dialog for selecting image file from local file system
