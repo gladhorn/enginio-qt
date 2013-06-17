@@ -197,6 +197,22 @@ EnginioQmlReply *EnginioQmlClient::remove(const QJSValue &object, const Operatio
     return ereply;
 }
 
+EnginioQmlReply *EnginioQmlClient::downloadFile(const QJSValue &object, const QString &file)
+{
+    Q_D(EnginioQmlClient);
+
+    if (!object.isObject())
+        return 0;
+
+    d->setEngine(object);
+    ObjectAdaptor<QJSValue> o(object, d);
+    QNetworkReply *nreply = d_ptr->downloadFile<QJSValue>(o, QUrl::fromUserInput(file));
+    EnginioQmlReply *ereply = new EnginioQmlReply(d, nreply);
+    nreply->setParent(ereply);
+
+    return ereply;
+}
+
 EnginioQmlReply *EnginioQmlClient::downloadFile(const QJSValue &object)
 {
     Q_D(EnginioQmlClient);

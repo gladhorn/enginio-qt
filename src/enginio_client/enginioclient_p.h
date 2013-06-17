@@ -232,6 +232,43 @@ class ENGINIOCLIENT_EXPORT EnginioClientPrivate
         return true;
     }
 
+    class DownloadFunctor
+    {
+        EnginioClientPrivate *d;
+        QFile *file;
+        QNetworkReply *nreply;
+
+    public:
+        DownloadFunctor() {}
+        DownloadFunctor(EnginioClientPrivate *enginio, const QUrl &url, QNetworkReply *reply)
+            :d(enginio), nreply(reply)
+        {
+            Q_ASSERT(d);
+            file = new QFile;
+            file->setFileName(url.toString());
+            Q_ASSERT(!file->exists());
+            file->open(QFile::WriteOnly);
+        }
+
+        void operator()(/*QNetworkReply *nreply*/)
+        {
+            if (!nreply) {
+                qWarning() << "Cast failed: " << d->q_ptr->sender();
+                return;
+            }
+
+            while (!nreply->atEnd() && nreply->bytesAvailable() > 0) {
+                QByteArray data = nreply->read(1024);
+                file->write(data);
+            }
+            if (nreply->atEnd()) {
+                file->close();
+                delete file;
+                nreply->deleteLater();
+            }
+        }
+    };
+
     class ReplyFinishedFunctor
     {
         EnginioClientPrivate *d;
@@ -254,6 +291,7 @@ class ENGINIOCLIENT_EXPORT EnginioClientPrivate
 
             if (nreply->error() != QNetworkReply::NoError) {
                 QPair<QIODevice *, qint64> deviceState = d->_chunkedUploads.take(nreply);
+                d->_fileDownloads.remove(nreply);
                 delete deviceState.first;
                 emit q->error(ereply);
                 emit ereply->errorChanged();
@@ -271,6 +309,17 @@ class ENGINIOCLIENT_EXPORT EnginioClientPrivate
                 // should never get here unless upload was successful
                 Q_ASSERT(status == EnginioString::complete);
                 delete deviceState.first;
+            }
+
+            // download a file
+            else if (d->_fileDownloads.contains(nreply)) {
+                QUrl file = d->_fileDownloads.take(nreply);
+                // FIXME
+                QUrl remote = QUrl::fromUserInput(ereply->data().value(QStringLiteral("expiringUrl")).toString());
+                QNetworkRequest req(d->_request);
+                req.setUrl(remote);
+                QNetworkReply *reply = d->q_ptr->networkManager()->get(req);
+                QObject::connect(reply, &QNetworkReply::readyRead, EnginioClientPrivate::DownloadFunctor(d, file, reply));
             }
 
             ereply->dataChanged();
@@ -376,6 +425,7 @@ public:
     QNetworkRequest _request;
     QMap<QNetworkReply*, EnginioReply*> _replyReplyMap;
     QMap<QNetworkReply*, QByteArray> _requestData;
+    QMap<QNetworkReply*, QUrl> _fileDownloads;
 
     // device and last position
     QMap<QNetworkReply*, QPair<QIODevice*, qint64> > _chunkedUploads;
@@ -667,6 +717,19 @@ public:
         req.setUrl(url);
 
         QNetworkReply *reply = networkManager()->get(req);
+        return reply;
+    }
+
+    template<class T>
+    QNetworkReply *downloadFile(const ObjectAdaptor<T> &object, const QUrl &file)
+    {
+        QUrl url(_serviceUrl);
+        url.setPath(getPath(object, FileGetDownloadUrlOperation));
+        QNetworkRequest req(_request);
+        req.setUrl(url);
+
+        QNetworkReply *reply = q_ptr->networkManager()->get(req);
+        _fileDownloads.insert(reply, file);
         return reply;
     }
 

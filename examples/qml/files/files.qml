@@ -12,8 +12,6 @@ ApplicationWindow {
     height: 600
     visible: true
 
-    Component.onCompleted: console.log("hello")
-
     // Enginio client specifies the backend to be used
     Enginio {
         id: client
@@ -29,6 +27,7 @@ ApplicationWindow {
         query: { // query for all objects of type "objects.image" and include references to files
             "objectType": "objects.files",
             "include": {"file": {}},
+            "sort": [{"sortBy": "name", "direction": "asc"}],
         }
     }
 
@@ -69,6 +68,20 @@ ApplicationWindow {
                 text: "Upload file"
                 onClicked: fileDialog.visible = true
             }
+            Button {
+                id: downloadButton
+                enabled: listView.currentRow >= 0
+                text: "Download selected"
+                onClicked: downloadFile(enginioModel.rowData(listView.currentRow)["file"]["id"],
+                                        enginioModel.rowData(listView.currentRow)["file"]["fileName"])
+            }
+            Button {
+                id: deleteButton
+                enabled: listView.currentRow >= 0
+                text: "Delete selected"
+                onClicked: enginioModel.remove(listView.currentRow)
+            }
+
             ProgressBar {
                 id: uploadProgress
                 maximumValue: 1.0
@@ -139,7 +152,8 @@ ApplicationWindow {
         property string fileId
         property string fileName
         onSelectionAccepted: {
-            var downReply = client.downloadFile({"id":fileId})
+            console.log("download to : " + fileUrl.toString() + "/" + fileName)
+            var downReply = client.downloadFile({"id":fileId}, fileUrl.toString() + fileName)
             downReply.finished.connect(function() {
                 console.log("Download: " + JSON.stringify(downReply.data) + " to " + fileUrl)
             })

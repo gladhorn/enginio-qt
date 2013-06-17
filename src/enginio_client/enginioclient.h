@@ -110,6 +110,9 @@ public:
 
     Q_INVOKABLE EnginioReply *uploadFile(const QJsonObject &associatedObject, const QUrl &file);
     Q_INVOKABLE EnginioReply *downloadFile(const QJsonObject &object);
+    Q_INVOKABLE EnginioReply *downloadFile(const QJsonObject &object, const QUrl &file);
+    Q_INVOKABLE EnginioReply *downloadFile(const QJsonObject &object, const QString &file);
+
 
 Q_SIGNALS:
     void sessionAuthenticated(EnginioReply *reply) const;
