@@ -87,6 +87,8 @@ Q_SIGNALS:
     void dataChanged();
     void errorChanged();
 
+    void uploadProgress(qint64 bytesSent, qint64 bytesTotal);
+
 protected:
     explicit EnginioReply(EnginioClientPrivate *parent, QNetworkReply *reply, EnginioReplyPrivate *priv);
     virtual void emitFinished();

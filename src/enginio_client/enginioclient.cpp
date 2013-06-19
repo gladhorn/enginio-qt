@@ -35,6 +35,7 @@
 **
 ****************************************************************************/
 
+#include "enginioclient.h"
 #include "enginioclient_p.h"
 #include "enginioreply.h"
 #include "enginiomodel.h"
@@ -459,6 +460,34 @@ EnginioReply* EnginioClient::downloadFile(const QJsonObject &object)
     return ereply;
 }
 
+
+EnginioReply* EnginioClient::downloadFile(const QJsonObject &object, const QUrl &file)
+{
+    Q_D(EnginioClient);
+
+    qDebug() << "cpp download file" << file;
+
+    QNetworkReply *nreply = d->downloadFile<QJsonObject>(object, file);
+    EnginioReply *ereply = new EnginioReply(d, nreply);
+    nreply->setParent(ereply);
+
+    return ereply;
+}
+EnginioReply* EnginioClient::downloadFile(const QJsonObject &object, const QString &file)
+{
+    Q_D(EnginioClient);
+
+    qDebug() << "cpp download file" << file;
+
+    QNetworkReply *nreply = d->downloadFile<QJsonObject>(object, QUrl::fromUserInput(file));
+    EnginioReply *ereply = new EnginioReply(d, nreply);
+    nreply->setParent(ereply);
+
+    return ereply;
+}
+
+
+
 Q_GLOBAL_STATIC(QThreadStorage<QNetworkAccessManager*>, NetworkManager)
 
 void EnginioClientPrivate::assignNetworkManager()
@@ -488,3 +517,5 @@ EnginioClient::AuthenticationState EnginioClient::authenticationState() const
     Q_D(const EnginioClient);
     return d->authenticationState();
 }
+
+#include "moc_enginioclient.cpp"

@@ -78,6 +78,7 @@ public:
     Q_INVOKABLE EnginioReply *append(const QJsonObject &value);
     Q_INVOKABLE EnginioReply *remove(int row);
     Q_INVOKABLE EnginioReply *setProperty(int row, const QString &role, const QVariant &value);
+    Q_INVOKABLE QVariant rowData(int row) const;
 
 protected:
     virtual QHash<int, QByteArray> roleNames() const Q_DECL_OVERRIDE;

@@ -44,6 +44,7 @@
 #include <QtCore/qjsondocument.h>
 #include <QtNetwork/qnetworkreply.h>
 
+#include "enginioclient.h"
 #include "enginioclient_p.h"
 #include "enginioreply.h"
 

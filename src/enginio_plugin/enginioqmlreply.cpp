@@ -1,4 +1,5 @@
 #include "enginioqmlreply.h"
+#include "enginioclient.h"
 #include "enginioqmlclient_p.h"
 #include <Enginio/private/enginioreply_p.h>
 #include <QtQml/qjsvalue.h>

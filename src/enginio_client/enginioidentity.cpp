@@ -36,6 +36,7 @@
 ****************************************************************************/
 
 #include "enginioidentity.h"
+#include "enginioclient.h"
 #include "enginioclient_p.h"
 #include "enginioreply.h"
 

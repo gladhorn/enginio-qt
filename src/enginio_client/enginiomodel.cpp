@@ -66,7 +66,9 @@ class EnginioModelPrivate {
 
     QHash<int, QString> _roles;
 
+public:
     QJsonArray _data; // TODO replace by a sparse array, and add laziness
+private:
 
     class EnginioDestroyed
     {
@@ -233,7 +235,7 @@ public:
 
     void execute()
     {
-        if (!_enginio)
+        if (!_enginio || _enginio->backendId().isEmpty() || _enginio->backendSecret().isEmpty())
             return;
         if (!_query.isEmpty()) {
             const EnginioReply *id = _enginio->query(_query, _operation);
@@ -257,6 +259,9 @@ public:
         // this kind of response happens when the backend id/secret is missing
         if (!response->data()[EnginioString::message].isNull())
             qWarning() << "Enginio: " << response->data()[EnginioString::message].toString();
+
+        if (gEnableEnginioDebugInfo)
+            qDebug() << "Enginio model request finished: " << response->data();
 
         QPair<int, QJsonObject> requestInfo = _dataChanged.take(response);
         int row = requestInfo.first;
@@ -537,6 +542,14 @@ QVariant EnginioModel::data(const QModelIndex &index, int role) const
         return QVariant();
 
     return d->data(index.row(), role);
+}
+
+QVariant EnginioModel::rowData(int row) const
+{
+    if (row < 0 || row >= d->rowCount())
+        return QVariant();
+
+    return d->_data.at(row).toObject();
 }
 
 int EnginioModel::rowCount(const QModelIndex &parent) const

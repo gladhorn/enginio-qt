@@ -39,7 +39,7 @@
 #define ENGINIOCLIENT_P_H
 
 #include "chunkdevice_p.h"
-#include "enginioclient.h"
+//#include "enginioclient.h"
 #include "enginioreply.h"
 #include "enginiofakereply_p.h"
 #include "enginioidentity.h"
@@ -232,6 +232,43 @@ class ENGINIOCLIENT_EXPORT EnginioClientPrivate
         return true;
     }
 
+    class DownloadFunctor
+    {
+        EnginioClientPrivate *d;
+        QFile *file;
+        QNetworkReply *nreply;
+
+    public:
+        DownloadFunctor() {}
+        DownloadFunctor(EnginioClientPrivate *enginio, const QUrl &url, QNetworkReply *reply)
+            :d(enginio), nreply(reply)
+        {
+            Q_ASSERT(d);
+            file = new QFile;
+            file->setFileName(url.toString());
+            Q_ASSERT(!file->exists());
+            file->open(QFile::WriteOnly);
+        }
+
+        void operator()(/*QNetworkReply *nreply*/)
+        {
+            if (!nreply) {
+                qWarning() << "Cast failed: " << d->q_ptr->sender();
+                return;
+            }
+
+            while (!nreply->atEnd() && nreply->bytesAvailable() > 0) {
+                QByteArray data = nreply->read(1024);
+                file->write(data);
+            }
+            if (nreply->atEnd()) {
+                file->close();
+                delete file;
+                nreply->deleteLater();
+            }
+        }
+    };
+
     class ReplyFinishedFunctor
     {
         EnginioClientPrivate *d;
@@ -254,6 +291,7 @@ class ENGINIOCLIENT_EXPORT EnginioClientPrivate
 
             if (nreply->error() != QNetworkReply::NoError) {
                 QPair<QIODevice *, qint64> deviceState = d->_chunkedUploads.take(nreply);
+                d->_fileDownloads.remove(nreply);
                 delete deviceState.first;
                 emit q->error(ereply);
                 emit ereply->errorChanged();
@@ -271,6 +309,17 @@ class ENGINIOCLIENT_EXPORT EnginioClientPrivate
                 // should never get here unless upload was successful
                 Q_ASSERT(status == EnginioString::complete);
                 delete deviceState.first;
+            }
+
+            // download a file
+            else if (d->_fileDownloads.contains(nreply)) {
+                QUrl file = d->_fileDownloads.take(nreply);
+                // FIXME
+                QUrl remote = QUrl::fromUserInput(ereply->data().value(QStringLiteral("expiringUrl")).toString());
+                QNetworkRequest req(d->_request);
+                req.setUrl(remote);
+                QNetworkReply *reply = d->q_ptr->networkManager()->get(req);
+                QObject::connect(reply, &QNetworkReply::readyRead, EnginioClientPrivate::DownloadFunctor(d, file, reply));
             }
 
             ereply->dataChanged();
@@ -376,6 +425,7 @@ public:
     QNetworkRequest _request;
     QMap<QNetworkReply*, EnginioReply*> _replyReplyMap;
     QMap<QNetworkReply*, QByteArray> _requestData;
+    QMap<QNetworkReply*, QUrl> _fileDownloads;
 
     // device and last position
     QMap<QNetworkReply*, QPair<QIODevice*, qint64> > _chunkedUploads;
@@ -671,6 +721,19 @@ public:
     }
 
     template<class T>
+    QNetworkReply *downloadFile(const ObjectAdaptor<T> &object, const QUrl &file)
+    {
+        QUrl url(_serviceUrl);
+        CHECK_AND_SET_PATH(url, object, FileGetDownloadUrlOperation);
+        QNetworkRequest req(_request);
+        req.setUrl(url);
+
+        QNetworkReply *reply = q_ptr->networkManager()->get(req);
+        _fileDownloads.insert(reply, file);
+        return reply;
+    }
+
+    template<class T>
     QNetworkReply *uploadFile(const ObjectAdaptor<T> &object, const QUrl &fileUrl)
     {
         if (!fileUrl.scheme().isEmpty() && !fileUrl.isLocalFile())
@@ -716,7 +779,23 @@ public:
         return q_ptr->isSignalConnected(signal);
     }
 
+    void uploadProgress(qint64 progress, qint64 total)
+    {
+        QNetworkReply *reply = qobject_cast<QNetworkReply*>(q_ptr->sender());
+        Q_ASSERT(reply);
+        if (_chunkedUploads.contains(reply)) {
+            EnginioReply *ereply = _replyReplyMap.value(reply);
+            QPair<QIODevice*, qint64> chunkData = _chunkedUploads.value(reply);
+            emit ereply->uploadProgress(chunkData.second + progress, chunkData.first->size());
+        } else {
+            EnginioReply *ereply = _replyReplyMap.value(reply);
+            emit ereply->uploadProgress(progress, total);
+        }
+    }
+
 private:
+
+#include <QNetworkReply>
 
     template<class T>
     QNetworkReply *uploadAsHttpMultiPart(const ObjectAdaptor<T> &object, QIODevice *device, const QString &mimeType)
@@ -732,6 +811,7 @@ private:
         QNetworkReply *reply = networkManager()->post(req, multiPart);
         multiPart->setParent(reply);
         device->setParent(multiPart);
+        QObject::connect(reply, SIGNAL(uploadProgress(qint64,qint64)), q_ptr, SLOT(uploadProgress(qint64,qint64)));
         return reply;
     }
 
@@ -775,6 +855,7 @@ private:
 
         QNetworkReply *reply = networkManager()->post(req, object.toJson());
         _chunkedUploads.insert(reply, qMakePair(device, static_cast<qint64>(0)));
+        QObject::connect(reply, SIGNAL(uploadProgress(qint64,qint64)), q_ptr, SLOT(uploadProgress(qint64,qint64)));
         return reply;
     }
 
@@ -814,6 +895,7 @@ private:
         _chunkedUploads.insert(reply, qMakePair(device, endPos));
         ereply->setNetworkReply(reply);
         reply->setParent(ereply);
+        QObject::connect(reply, SIGNAL(uploadProgress(qint64,qint64)), q_ptr, SLOT(uploadProgress(qint64,qint64)));
     }
 };
 
