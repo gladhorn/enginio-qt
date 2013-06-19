@@ -568,3 +568,5 @@ bool EnginioModel::canFetchMore(const QModelIndex &parent) const
     Q_UNUSED(parent);
     return d->canFetchMore();
 }
+
+#include "moc_enginiomodel.cpp"

@@ -174,3 +174,5 @@ QDebug operator<<(QDebug d, const EnginioReply *reply)
     return d.space();
 }
 #endif // QT_NO_DEBUG_STREAM
+
+#include "moc_enginioreply.cpp"

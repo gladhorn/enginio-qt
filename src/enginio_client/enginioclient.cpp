@@ -488,3 +488,5 @@ EnginioClient::AuthenticationState EnginioClient::authenticationState() const
     Q_D(const EnginioClient);
     return d->authenticationState();
 }
+
+#include "moc_enginioclient.cpp"
